@@ -1,54 +1,40 @@
 import java.util.*;
 
+// Custom Exception
+class InvalidBookingException extends Exception {
+    InvalidBookingException(String message) {
+        super(message);
+    }
+}
+
+// Reservation Model
 class Reservation {
-    String reservationId;
     String customerName;
     String roomType;
 
-    Reservation(String reservationId, String customerName, String roomType) {
-        this.reservationId = reservationId;
+    Reservation(String customerName, String roomType) {
         this.customerName = customerName;
         this.roomType = roomType;
     }
 
     public String toString() {
-        return "Reservation ID: " + reservationId +
-                ", Customer: " + customerName +
-                ", Room Type: " + roomType;
+        return "Customer: " + customerName + ", Room Type: " + roomType;
     }
 }
 
-class BookingHistory {
-    private List<Reservation> history = new ArrayList<>();
+// Validator Class
+class InvalidBookingValidator {
 
-    void addReservation(Reservation r) {
-        history.add(r);
-    }
+    static void validate(String roomType, Map<String, Integer> inventory) throws InvalidBookingException {
 
-    List<Reservation> getReservations() {
-        return history;
-    }
-}
-
-class BookingReportService {
-
-    void displayAllBookings(List<Reservation> reservations) {
-        System.out.println("Booking History:");
-        for (Reservation r : reservations) {
-            System.out.println(r);
-        }
-    }
-
-    void generateSummary(List<Reservation> reservations) {
-        Map<String, Integer> roomCount = new HashMap<>();
-
-        for (Reservation r : reservations) {
-            roomCount.put(r.roomType, roomCount.getOrDefault(r.roomType, 0) + 1);
+        // Validate room type
+        if (!inventory.containsKey(roomType)) {
+            throw new InvalidBookingException("Invalid room type selected: " + roomType);
         }
 
-        System.out.println("\nBooking Summary Report:");
-        for (String type : roomCount.keySet()) {
-            System.out.println(type + " Rooms Booked: " + roomCount.get(type));
+        // Check availability
+        if (inventory.get(roomType) <= 0) {
+            throw new InvalidBookingException("No rooms available for room type: " + roomType);
         }
     }
 }
@@ -57,20 +43,51 @@ public class Main {
 
     public static void main(String[] args) {
 
-        BookingHistory history = new BookingHistory();
-        BookingReportService reportService = new BookingReportService();
+        Map<String, Integer> inventory = new HashMap<>();
 
-        Reservation r1 = new Reservation("RES101", "Alice", "Single");
-        Reservation r2 = new Reservation("RES102", "Bob", "Double");
-        Reservation r3 = new Reservation("RES103", "Charlie", "Suite");
+        inventory.put("Single", 2);
+        inventory.put("Double", 1);
+        inventory.put("Suite", 0);
 
-        history.addReservation(r1);
-        history.addReservation(r2);
-        history.addReservation(r3);
+        List<Reservation> confirmedBookings = new ArrayList<>();
 
-        List<Reservation> storedBookings = history.getReservations();
+        String[][] bookingInputs = {
+                {"Alice", "Single"},
+                {"Bob", "Suite"},     // invalid (no inventory)
+                {"Charlie", "Deluxe"}, // invalid room type
+                {"David", "Double"}
+        };
 
-        reportService.displayAllBookings(storedBookings);
-        reportService.generateSummary(storedBookings);
+        for (String[] input : bookingInputs) {
+
+            String customer = input[0];
+            String roomType = input[1];
+
+            try {
+
+                // Validate before booking
+                InvalidBookingValidator.validate(roomType, inventory);
+
+                // Process booking
+                inventory.put(roomType, inventory.get(roomType) - 1);
+
+                Reservation r = new Reservation(customer, roomType);
+                confirmedBookings.add(r);
+
+                System.out.println("Booking Confirmed -> " + r);
+
+            } catch (InvalidBookingException e) {
+
+                System.out.println("Booking Failed for " + customer + ": " + e.getMessage());
+
+            }
+        }
+
+        System.out.println("\nFinal Inventory State: " + inventory);
+
+        System.out.println("\nConfirmed Bookings:");
+        for (Reservation r : confirmedBookings) {
+            System.out.println(r);
+        }
     }
 }
